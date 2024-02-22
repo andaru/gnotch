@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package gnotch;
+
+option go_package = "github.com/andaru/gnotch";
+
+// Gnotch service definition.
+//
+// Gnotch is the generic network operator's terminal command helper.
+//
+// The service manages connections to a fleet of network devices under
+// a common (operator's) control, allowing CLI or shell commands to be
+// executed on the devices, with responses returned.
+service Gnotch {
+    // Command sends a command and returns a response.  To avoid imposing
+    // any requirements on UTF-8 compatibility of a device, the request and
+    // response data are byte arrays.
+    rpc Command (CommandRequest) returns (CommandResponse);
+
+    // rpc CommandStream (stream CommandRequest) returns (stream CommandResponse);
+}
+
+// CommandRequest contains the information about a device command request.
+message CommandRequest {
+    // device describes the device name as known by the Gnotch agent
+    string device = 1;
+    // command contains the command request
+    bytes command = 2;
+}
+
+// CommandResponse contains the information about a device command response.
+message CommandResponse {
+    // device describes the device name as known by the Gnotch agent
+    string device = 1;
+    // response contains the command response data
+    bytes repsonse = 2;
+}
