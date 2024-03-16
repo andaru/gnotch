@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"log"
 	"net"
 	"os"
@@ -9,7 +10,23 @@ import (
 	pb "github.com/andaru/gnotch/proto"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 )
+
+// loadTLS
+func loadTLS() (credentials.TransportCredentials, error) {
+	serverCert, err := tls.LoadX509KeyPair("cert/server-cert.pem", "cert/server-key.pem")
+	if err != nil {
+		return nil, err
+	}
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+	return credentials.NewTLS(config), nil
+}
 
 // runAgentAction returns a urfave/cli Action function for starting the agent
 func runAgentAction(cfg *gnotch.AgentConfig) func(*cli.Context) error {
@@ -20,9 +37,17 @@ func runAgentAction(cfg *gnotch.AgentConfig) func(*cli.Context) error {
 		if err != nil {
 			return err
 		}
+
+		// creds, err := loadTLS()
+		// if err != nil {
+		// 	return err
+		// }
 		agent := gnotch.NewAgent(*cfg)
-		server := grpc.NewServer()
+		server := grpc.NewServer(
+		// grpc.Creds(creds),
+		)
 		pb.RegisterGnotchServer(server, agent)
+		reflection.Register(server)
 		server.Serve(lis)
 		return nil
 	}
@@ -40,10 +65,19 @@ gRPC proxies (for low-latency access across very large networks).`,
 
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "endpoint",
+				Name:        "grpc-endpoint",
 				Usage:       "gRPC server endpoint in host:port format",
 				Value:       ":42069",
 				Destination: &cfg.AgentEndpoint,
+				EnvVars:     []string{"GRPC_ENDPOINT"},
+			},
+			&cli.BoolFlag{
+				Name:        "verbose",
+				Aliases:     []string{"v"},
+				Usage:       "emit agent logs to stdout",
+				Value:       false,
+				Destination: &cfg.Verbose,
+				EnvVars:     []string{"VERBOSE"},
 			},
 		},
 		Action: runAgentAction(cfg),
